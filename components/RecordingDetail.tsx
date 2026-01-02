@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { Copy, Edit2, Check, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -16,7 +16,7 @@ interface RecordingResponse {
 }
 
 const fetcher = async (url: string): Promise<RecordingResponse> => {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) {
     throw new Error("Napaka pri nalaganju posnetka");
   }
@@ -27,6 +27,7 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const processingTriggeredRef = useRef(false);
 
   const { data, error, mutate } = useSWR<RecordingResponse>(
     `/api/recordings/${id}`,
@@ -44,6 +45,34 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
       setEditedTitle(data.recording.title);
     }
   }, [data?.recording?.title]);
+
+  // Trigger processing once when status is "processing"
+  useEffect(() => {
+    if (
+      data?.recording?.status === "processing" &&
+      !processingTriggeredRef.current
+    ) {
+      processingTriggeredRef.current = true;
+
+      // Fire-and-forget: trigger processing
+      fetch("/api/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recordingId: id }),
+        credentials: "include",
+      }).catch((error) => {
+        console.error("Failed to trigger processing:", error);
+        // Don't show error toast - polling will handle status updates
+      });
+    }
+
+    // Reset trigger if status changes away from processing
+    if (data?.recording?.status !== "processing") {
+      processingTriggeredRef.current = false;
+    }
+  }, [data?.recording?.status, id]);
 
   const handleCopyTranscript = async () => {
     if (!data?.recording?.transcript) return;
@@ -70,6 +99,7 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ title: editedTitle.trim() }),
+        credentials: "include",
       });
 
       if (!response.ok) {

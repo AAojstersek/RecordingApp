@@ -135,13 +135,62 @@ export default function AudioRecorder() {
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = () => {
-        // Timer cleanup happens in stopRecording
+      mediaRecorder.onstop = async () => {
+        // Defensive log
+        console.log("Recorded chunks:", chunksRef.current.map((c) => c.size));
+
+        if (chunksRef.current.length === 0) {
+          toast.error("Posnetek je prazen.");
+          setState("idle");
+          setDuration(0);
+          return;
+        }
+
+        const blob = new Blob(chunksRef.current, { type: mime || "audio/webm" });
+        const formData = new FormData();
+        const extension = getFileExtension(mime || "");
+        const filename = `recording.${extension}`;
+        formData.append("audio", blob, filename);
+
+        setState("uploading");
+
+        try {
+          const loadingToast = toast.loading("Nalagam posnetek...");
+
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          toast.dismiss(loadingToast);
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: "Neznana napaka" }));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          toast.success("Posnetek uspešno naložen!");
+
+          if (data.recordingId) {
+            router.push(`/recordings/${data.recordingId}`);
+          } else {
+            toast.error("Manjka ID posnetka v odgovoru.");
+            setState("idle");
+            setDuration(0);
+          }
+        } catch (error) {
+          toast.error(
+            error instanceof Error ? error.message : "Napaka pri nalaganju posnetka."
+          );
+          setState("idle");
+          setDuration(0);
+        }
       };
 
       mediaRecorder.start();
@@ -167,54 +216,20 @@ export default function AudioRecorder() {
     }
   };
 
-  const stopRecording = async () => {
+  const stopRecording = () => {
     if (mediaRecorderRef.current && state === "recording") {
+      // Stop the media recorder (onstop callback will handle blob creation and upload)
       mediaRecorderRef.current.stop();
+      
+      // Stop all tracks
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
+      
+      // Stop the timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
-      }
-
-      setState("uploading");
-
-      try {
-        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-        const formData = new FormData();
-        const extension = getFileExtension(mimeType || "");
-        const filename = `recording.${extension}`;
-        formData.append("audio", blob, filename);
-
-        const loadingToast = toast.loading("Nalagam posnetek...");
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        toast.dismiss(loadingToast);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Neznana napaka" }));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        toast.success("Posnetek uspešno naložen!");
-
-        if (data.recordingId) {
-          router.push(`/recordings/${data.recordingId}`);
-        } else {
-          toast.error("Manjka ID posnetka v odgovoru.");
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Napaka pri nalaganju posnetka."
-        );
-        setState("idle");
-        setDuration(0);
       }
     }
   };

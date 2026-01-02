@@ -49,7 +49,7 @@ export async function transcribeAudio(
 }
 
 /**
- * Generates a summary using Llama 3.1 70B model
+ * Generates a summary using Llama 3.1 8B model
  * The prompt is in Slovenian and requests key points, decisions, and action items as bullets
  * @param transcript - The transcript text to summarize
  * @returns Summary text in Slovenian with bullets
@@ -60,21 +60,13 @@ export async function generateSummary(transcript: string): Promise<string> {
     const completion = await groq.chat.completions.create({
       messages: [
         {
-          role: "system",
-          content: "Ti si pomočnik, ki ustvarja strukturirane povzetke posnetkov v slovenščini.",
-        },
-        {
           role: "user",
-          content: `Povzemi naslednji prepis posnetka v slovenščini. Vključi:
-- Ključne točke (kot seznam)
-- Odločitve (kot seznam)
-- Akcijske korake (kot seznam)
+          content: `Povzemi transkript v slovenščini. Uporabi alineje za ključne točke in loči akcijske korake.
 
-Prepís:
 ${transcript}`,
         },
       ],
-      model: "llama-3.1-70b-versatile",
+      model: "llama-3.1-8b-instant",
       temperature: 0.7,
     });
 

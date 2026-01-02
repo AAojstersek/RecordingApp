@@ -31,36 +31,27 @@ export function createBrowserClient(): SupabaseClient {
 
 /**
  * Creates a Supabase client for use in server components and route handlers
- * Uses cookie-based authentication
+ * Uses cookie-based authentication with getAll()/setAll() pattern for Route Handlers
  * @returns Supabase client instance
  */
-export async function createServerClient(): Promise<SupabaseClient> {
-  const cookieStore = await cookies();
+export function createServerClient(): SupabaseClient {
+  const cookieStore = cookies();
 
   return createSupabaseServerClient(
     supabaseUrl,
     supabaseAnonKey,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set({ name, value, ...options });
-          } catch (error) {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
-          } catch (error) {
-            // The `delete` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Route handlers can throw on set in some contexts; ignore.
           }
         },
       },
@@ -97,7 +88,7 @@ export async function getRecordingById(
   id: string,
   client?: SupabaseClient
 ): Promise<Recording | null> {
-  const supabase = client || await createServerClient();
+  const supabase = client || createServerClient();
 
   const { data, error } = await supabase
     .from("recordings")
@@ -126,7 +117,7 @@ export async function getRecordingById(
 export async function listMyRecordings(
   client?: SupabaseClient
 ): Promise<Recording[]> {
-  const supabase = client || await createServerClient();
+  const supabase = client || createServerClient();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -158,7 +149,7 @@ export async function createRecording(
   data: Omit<Recording, "id" | "created_at" | "updated_at">,
   client?: SupabaseClient
 ): Promise<Recording> {
-  const supabase = client || await createServerClient();
+  const supabase = client || createServerClient();
 
   // If user_id is not provided, get it from the authenticated user
   let userId = data.user_id;
@@ -199,7 +190,7 @@ export async function updateRecording(
   updates: Partial<Omit<Recording, "id" | "user_id" | "created_at">>,
   client?: SupabaseClient
 ): Promise<Recording> {
-  const supabase = client || await createServerClient();
+  const supabase = client || createServerClient();
 
   const { data, error } = await supabase
     .from("recordings")
@@ -230,7 +221,7 @@ export async function deleteRecording(
   id: string,
   client?: SupabaseClient
 ): Promise<void> {
-  const supabase = client || await createServerClient();
+  const supabase = client || createServerClient();
 
   const { error } = await supabase
     .from("recordings")

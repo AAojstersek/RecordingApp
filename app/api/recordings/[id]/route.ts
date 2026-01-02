@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient, getRecordingById, updateRecording, deleteRecording } from "@/lib/supabase";
 import { getSignedR2Url } from "@/lib/r2";
 
@@ -14,13 +15,24 @@ export async function GET(
 ) {
   try {
     const { id } = context.params;
-    const supabase = await createServerClient();
+    const supabase = createServerClient();
 
     // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    
+    if (process.env.NODE_ENV === "development" && (!user || authError)) {
+      const cookieStore = cookies();
+      const cookieNames = cookieStore.getAll().map((c) => c.name);
+      console.log("[DEV] GET /api/recordings/[id]: User is null or error:", {
+        hasUser: !!user,
+        authError: authError?.message,
+        cookieNames,
+      });
+    }
+
+    if (!user) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "UNAUTHORIZED" },
         { status: 401 }
       );
     }
@@ -29,7 +41,7 @@ export async function GET(
     const recording = await getRecordingById(id, supabase);
     if (!recording) {
       return NextResponse.json(
-        { error: "Recording not found" },
+        { error: "NOT_FOUND" },
         { status: 404 }
       );
     }
@@ -72,13 +84,24 @@ export async function PATCH(
 ) {
   try {
     const { id } = context.params;
-    const supabase = await createServerClient();
+    const supabase = createServerClient();
 
     // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    
+    if (process.env.NODE_ENV === "development" && (!user || authError)) {
+      const cookieStore = cookies();
+      const cookieNames = cookieStore.getAll().map((c) => c.name);
+      console.log("[DEV] PATCH /api/recordings/[id]: User is null or error:", {
+        hasUser: !!user,
+        authError: authError?.message,
+        cookieNames,
+      });
+    }
+
+    if (!user) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "UNAUTHORIZED" },
         { status: 401 }
       );
     }
@@ -99,7 +122,7 @@ export async function PATCH(
     const existingRecording = await getRecordingById(id, supabase);
     if (!existingRecording) {
       return NextResponse.json(
-        { error: "Recording not found" },
+        { error: "NOT_FOUND" },
         { status: 404 }
       );
     }
@@ -132,13 +155,24 @@ export async function DELETE(
 ) {
   try {
     const { id } = context.params;
-    const supabase = await createServerClient();
+    const supabase = createServerClient();
 
     // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    
+    if (process.env.NODE_ENV === "development" && (!user || authError)) {
+      const cookieStore = cookies();
+      const cookieNames = cookieStore.getAll().map((c) => c.name);
+      console.log("[DEV] DELETE /api/recordings/[id]: User is null or error:", {
+        hasUser: !!user,
+        authError: authError?.message,
+        cookieNames,
+      });
+    }
+
+    if (!user) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "UNAUTHORIZED" },
         { status: 401 }
       );
     }
@@ -147,7 +181,7 @@ export async function DELETE(
     const existingRecording = await getRecordingById(id, supabase);
     if (!existingRecording) {
       return NextResponse.json(
-        { error: "Recording not found" },
+        { error: "NOT_FOUND" },
         { status: 404 }
       );
     }
