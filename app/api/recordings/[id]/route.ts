@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient, getRecordingById, updateRecording, deleteRecording } from "@/lib/supabase";
-import { getSignedR2Url } from "@/lib/r2";
+import { getSignedR2Url, deleteFromR2 } from "@/lib/r2";
+
+export const runtime = "nodejs";
 
 interface RouteContext {
   params: {
@@ -188,15 +190,37 @@ export async function DELETE(
 
     if (existingRecording.user_id !== user.id) {
       return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
+        { error: "NOT_FOUND" },
+        { status: 404 }
       );
     }
 
-    // Delete recording (R2 cleanup not done in this phase)
-    await deleteRecording(id, supabase);
+    // Delete from R2 first (if r2_key exists)
+    if (existingRecording.r2_key) {
+      try {
+        await deleteFromR2(existingRecording.r2_key);
+      } catch (error) {
+        console.error("Failed to delete from R2:", error);
+        // Do not delete DB row if R2 delete fails
+        return NextResponse.json(
+          { error: "Failed to delete audio file" },
+          { status: 500 }
+        );
+      }
+    }
 
-    return new NextResponse(null, { status: 204 });
+    // Delete from database
+    try {
+      await deleteRecording(id, supabase);
+    } catch (error) {
+      console.error("Failed to delete from database:", error);
+      return NextResponse.json(
+        { error: "Failed to delete recording" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Error in DELETE /api/recordings/[id]:", error);
     return NextResponse.json(
@@ -205,4 +229,5 @@ export async function DELETE(
     );
   }
 }
+
 

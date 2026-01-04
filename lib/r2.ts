@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Server-only module - ensure this is not imported in client components
@@ -73,6 +73,24 @@ export async function getSignedR2Url(
     return url;
   } catch (error) {
     throw new Error(`Failed to generate signed R2 URL: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Deletes an object from R2 storage
+ * @param key - The R2 object key (path/filename)
+ * @throws Error if deletion fails
+ */
+export async function deleteFromR2(key: string): Promise<void> {
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+    });
+
+    await s3Client.send(command);
+  } catch (error) {
+    throw new Error(`Failed to delete from R2: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

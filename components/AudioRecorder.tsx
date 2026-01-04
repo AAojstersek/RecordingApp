@@ -243,11 +243,11 @@ export default function AudioRecorder() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-      <div className="space-y-4">
+    <div className="w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="space-y-6">
         {/* Timer */}
         <div className="text-center">
-          <div className="text-4xl font-mono font-bold text-gray-800 dark:text-gray-200">
+          <div className="text-5xl font-mono font-bold text-gray-900 dark:text-gray-100">
             {formatTime(duration)}
           </div>
         </div>
@@ -258,16 +258,16 @@ export default function AudioRecorder() {
             ref={canvasRef}
             width={300}
             height={80}
-            className="w-full max-w-xs h-20 rounded bg-gray-100 dark:bg-gray-700"
+            className="w-full max-w-xs h-20 rounded bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
           />
         </div>
 
         {/* Controls */}
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center">
           {state === "idle" && (
             <button
               onClick={startRecording}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-medium transition-colors shadow-sm hover:shadow"
             >
               <Mic className="w-5 h-5" />
               Začni snemanje
@@ -277,7 +277,7 @@ export default function AudioRecorder() {
           {state === "recording" && (
             <button
               onClick={stopRecording}
-              className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+              className="flex items-center gap-2 px-8 py-3 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg font-medium transition-colors shadow-sm hover:shadow"
             >
               <Square className="w-5 h-5" />
               Ustavi snemanje
@@ -287,7 +287,7 @@ export default function AudioRecorder() {
           {state === "uploading" && (
             <button
               disabled
-              className="flex items-center gap-2 px-6 py-3 bg-gray-400 text-white rounded-lg font-medium cursor-not-allowed"
+              className="flex items-center gap-2 px-8 py-3 bg-gray-400 dark:bg-gray-600 text-white rounded-lg font-medium cursor-not-allowed opacity-75"
             >
               <Loader2 className="w-5 h-5 animate-spin" />
               Nalagam...

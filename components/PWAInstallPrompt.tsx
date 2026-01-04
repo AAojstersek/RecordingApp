@@ -14,6 +14,13 @@ export default function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // Check if user has visited before (don't show on first visit)
+    const hasVisited = localStorage.getItem("pwa_has_visited") === "true";
+    if (!hasVisited) {
+      localStorage.setItem("pwa_has_visited", "true");
+      return;
+    }
+
     // Check if already installed
     const checkInstalled = () => {
       // Check for standalone mode (Android/Chrome)
@@ -37,7 +44,10 @@ export default function PWAInstallPrompt() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowPrompt(true);
+      // Only show if user has visited before
+      if (hasVisited) {
+        setShowPrompt(true);
+      }
     };
 
     // Listen for app installed event
@@ -83,10 +93,10 @@ export default function PWAInstallPrompt() {
     <div className="fixed bottom-4 right-4 z-50">
       <button
         onClick={handleInstallClick}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-colors text-sm font-medium"
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all text-sm font-medium border border-blue-700 dark:border-blue-500"
       >
         <Download className="w-4 h-4" />
-        Add to Home Screen
+        <span className="hidden sm:inline">Namesti</span>
       </button>
     </div>
   );

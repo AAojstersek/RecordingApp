@@ -19,7 +19,13 @@ export default function LoginPage() {
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        // Redirect if authenticated
+        if (currentUser) {
+          router.replace("/recordings");
+        }
       } catch (error) {
         console.error("Error checking session:", error);
       } finally {
@@ -33,13 +39,19 @@ export default function LoginPage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      // Redirect if authenticated
+      if (currentUser) {
+        router.replace("/recordings");
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +69,7 @@ export default function LoginPage() {
       }
 
       toast.success("Prijava uspešna");
-      router.push("/recordings");
+      router.replace("/recordings");
     } catch (error) {
       toast.error("Prijava ni uspela");
       console.error("Login error:", error);
@@ -90,14 +102,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md space-y-6 rounded-lg bg-white dark:bg-gray-800 p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-6 rounded-lg bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           Prijava
         </h1>
 
         {/* Status */}
-        <div className="rounded-lg bg-gray-100 dark:bg-gray-700 p-4">
+        <div className="rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4">
           {user ? (
             <p className="text-sm text-gray-700 dark:text-gray-300">
               Prijavljen kot: <span className="font-medium">{user.email}</span>
@@ -111,11 +123,11 @@ export default function LoginPage() {
 
         {/* Login Form */}
         {!user && (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
                 E-pošta
               </label>
@@ -125,7 +137,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1 block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors"
                 placeholder="vas@email.si"
                 disabled={loading}
               />
@@ -134,7 +146,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
                 Geslo
               </label>
@@ -144,7 +156,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="mt-1 block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors"
                 placeholder="••••••••"
                 disabled={loading}
               />
@@ -153,7 +165,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 px-4 py-2.5 font-medium text-white transition-colors shadow-sm hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Prijavljam..." : "Prijavi se"}
             </button>
@@ -164,7 +176,7 @@ export default function LoginPage() {
         {user && (
           <button
             onClick={handleLogout}
-            className="w-full rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            className="w-full rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 px-4 py-2.5 font-medium text-white transition-colors shadow-sm hover:shadow"
           >
             Odjavi se
           </button>

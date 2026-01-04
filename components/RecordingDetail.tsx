@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Copy, Edit2, Check, X, Loader2 } from "lucide-react";
+import { Copy, Edit2, Check, X, Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Recording } from "@/types";
 
@@ -41,7 +41,7 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
   );
 
   useEffect(() => {
-    if (data?.recording) {
+    if (data?.recording?.title) {
       setEditedTitle(data.recording.title);
     }
   }, [data?.recording?.title]);
@@ -75,10 +75,11 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
   }, [data?.recording?.status, id]);
 
   const handleCopyTranscript = async () => {
-    if (!data?.recording?.transcript) return;
+    const textToCopy = data?.recording?.transcript_body || data?.recording?.transcript;
+    if (!textToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(data.recording.transcript);
+      await navigator.clipboard.writeText(textToCopy);
       toast.success("Prepís kopiran!");
     } catch (error) {
       toast.error("Napaka pri kopiranju prepisa.");
@@ -123,6 +124,32 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
     setIsEditingTitle(false);
   };
 
+  const handleRefresh = async () => {
+    await mutate();
+  };
+
+  const handleRetry = async () => {
+    try {
+      const response = await fetch("/api/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recordingId: id }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Napaka pri ponovni obdelavi");
+      }
+
+      toast.success("Obdelava znova zagnana");
+      await mutate();
+    } catch (error) {
+      toast.error("Napaka pri ponovni obdelavi posnetka.");
+    }
+  };
+
   if (error) {
     return (
       <div className="p-6 text-center">
@@ -148,13 +175,22 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
 
   if (recording.status === "processing") {
     return (
-      <div className="p-6 text-center space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-        <div className="text-lg text-gray-700 dark:text-gray-300">
-          Obdelujem...
-        </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Posnetek se obdeluje. Prosimo počakajte...
+      <div className="space-y-6">
+        <div className="p-8 text-center space-y-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
+          <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Obdelujem...
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Posnetek se obdeluje. Prosimo počakajte...
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Osveži
+          </button>
         </div>
       </div>
     );
@@ -162,12 +198,22 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
 
   if (recording.status === "failed") {
     return (
-      <div className="p-6 text-center space-y-4">
-        <div className="text-red-600 dark:text-red-400 text-lg">
-          Obdelava posnetka ni uspela.
-        </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Poskusite znova naložiti posnetek.
+      <div className="space-y-6">
+        <div className="p-8 text-center space-y-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <AlertCircle className="w-12 h-12 mx-auto text-red-600 dark:text-red-400" />
+          <div className="text-xl font-semibold text-red-900 dark:text-red-100">
+            Obdelava posnetka ni uspela
+          </div>
+          <div className="text-sm text-red-700 dark:text-red-300">
+            Poskusite znova obdelati posnetek.
+          </div>
+          <button
+            onClick={handleRetry}
+            className="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Poskusi znova
+          </button>
         </div>
       </div>
     );
@@ -184,7 +230,7 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+    <div className="w-full space-y-6">
       {/* Title */}
       <div className="flex items-center gap-2">
         {isEditingTitle ? (
@@ -251,23 +297,23 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
       )}
 
       {/* Transcript */}
-      {recording.transcript && (
-        <div className="space-y-2">
+      {(recording.transcript_body || recording.transcript) && (
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               Prepís
             </h2>
             <button
               onClick={handleCopyTranscript}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors border border-gray-200 dark:border-gray-700"
             >
               <Copy className="w-4 h-4" />
               Kopiraj
             </button>
           </div>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg max-h-64 overflow-y-auto">
-            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-              {recording.transcript}
+          <div className="p-5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
+            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+              {recording.transcript_body || recording.transcript}
             </p>
           </div>
         </div>
@@ -275,12 +321,12 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
 
       {/* Summary */}
       {recording.summary && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Povzetek
           </h2>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+          <div className="p-5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
               {recording.summary}
             </p>
           </div>
