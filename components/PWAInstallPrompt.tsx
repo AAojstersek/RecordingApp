@@ -26,24 +26,28 @@ export default function PWAInstallPrompt() {
       // Check for standalone mode (Android/Chrome)
       if (window.matchMedia("(display-mode: standalone)").matches) {
         setIsInstalled(true);
-        return;
+        return true;
       }
 
       // Check for iOS standalone mode
       if ((window.navigator as any).standalone === true) {
         setIsInstalled(true);
-        return;
+        return true;
       }
 
       setIsInstalled(false);
+      return false;
     };
 
-    checkInstalled();
+    if (checkInstalled()) {
+      return; // Already installed, don't show prompt
+    }
 
     // Listen for beforeinstallprompt event (Chrome/Edge)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      setDeferredPrompt(promptEvent);
       // Only show if user has visited before
       if (hasVisited) {
         setShowPrompt(true);
@@ -69,19 +73,26 @@ export default function PWAInstallPrompt() {
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
 
-    // Show the install prompt
-    await deferredPrompt.prompt();
+    try {
+      // Show the install prompt
+      await deferredPrompt.prompt();
 
-    // Wait for user choice
-    const { outcome } = await deferredPrompt.userChoice;
+      // Wait for user choice
+      const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === "accepted") {
-      setIsInstalled(true);
+      // Hide prompt regardless of outcome
       setShowPrompt(false);
-    }
+      setDeferredPrompt(null);
 
-    // Clear the deferred prompt
-    setDeferredPrompt(null);
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+      }
+    } catch (error) {
+      // If prompt fails, hide it anyway
+      console.error("Install prompt error:", error);
+      setShowPrompt(false);
+      setDeferredPrompt(null);
+    }
   };
 
   // Don't show if already installed or no prompt available

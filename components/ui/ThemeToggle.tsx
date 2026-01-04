@@ -9,18 +9,33 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    // Initialize from DOM (set by inline script in layout)
-    const isCurrentlyDark = document.documentElement.classList.contains("dark");
-    setIsDark(isCurrentlyDark);
+    // Read from localStorage (fallback to "dark" if not set)
+    try {
+      const saved = localStorage.getItem("theme");
+      const theme = saved === "light" ? "light" : "dark";
+      setIsDark(theme === "dark");
+      
+      // Ensure DOM matches localStorage
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    } catch (e) {
+      // Fallback to dark if localStorage fails
+      setIsDark(true);
+      document.documentElement.classList.add("dark");
+    }
   }, []);
 
   const toggleTheme = () => {
-    const currentlyDark = document.documentElement.classList.contains("dark");
-    const newIsDark = !currentlyDark;
-    
-    setIsDark(newIsDark);
-    
     try {
+      const currentlyDark = document.documentElement.classList.contains("dark");
+      const newIsDark = !currentlyDark;
+      
+      setIsDark(newIsDark);
+      
+      // Toggle class and save to localStorage
       if (newIsDark) {
         document.documentElement.classList.add("dark");
         localStorage.setItem("theme", "dark");

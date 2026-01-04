@@ -64,15 +64,30 @@ export default function LoginPage() {
       });
 
       if (error) {
-        toast.error(`Prijava ni uspela: ${error.message}`);
+        // Log error details for debugging (without secrets)
+        console.error("Login error:", {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+        });
+        
+        // Show user-friendly error message
+        const errorMessage = error.message || "Nepričakovana napaka pri prijavi";
+        toast.error(`Prijava ni uspela: ${errorMessage}`);
+        setLoading(false);
         return;
       }
 
+      // Success - redirect will happen via onAuthStateChange
       toast.success("Prijava uspešna");
-      router.replace("/recordings");
+      // Small delay to ensure session is set
+      setTimeout(() => {
+        router.replace("/recordings");
+      }, 100);
     } catch (error) {
-      toast.error("Prijava ni uspela");
-      console.error("Login error:", error);
+      console.error("Login exception:", error);
+      const errorMessage = error instanceof Error ? error.message : "Nepričakovana napaka";
+      toast.error(`Prijava ni uspela: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

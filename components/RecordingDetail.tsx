@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Copy, Edit2, Check, X, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Copy, Edit2, Check, X, Loader2, RefreshCw, AlertCircle, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { Recording } from "@/types";
 
 interface RecordingDetailProps {
@@ -27,7 +29,10 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const processingTriggeredRef = useRef(false);
+  const router = useRouter();
 
   const { data, error, mutate } = useSWR<RecordingResponse>(
     `/api/recordings/${id}`,
@@ -150,6 +155,26 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/recordings/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Brisanje ni uspelo");
+      }
+
+      toast.success("Posnetek izbrisan");
+      router.push("/recordings");
+    } catch (error) {
+      toast.error("Brisanje ni uspelo.");
+      setIsDeleting(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="p-6 text-center">
@@ -199,22 +224,45 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
   if (recording.status === "failed") {
     return (
       <div className="space-y-6">
-        <div className="p-8 text-center space-y-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-          <AlertCircle className="w-12 h-12 mx-auto text-red-600 dark:text-red-400" />
-          <div className="text-xl font-semibold text-red-900 dark:text-red-100">
-            Obdelava posnetka ni uspela
+        <div className="p-8 space-y-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 mx-auto text-red-600 dark:text-red-400 mb-4" />
+            <div className="text-xl font-semibold text-red-900 dark:text-red-100 mb-2">
+              Obdelava posnetka ni uspela
+            </div>
+            <div className="text-sm text-red-700 dark:text-red-300 mb-6">
+              Posnetek ni bil uspešno obdelan. Poskusite znova obdelati posnetek ali ga izbrišite.
+            </div>
           </div>
-          <div className="text-sm text-red-700 dark:text-red-300">
-            Poskusite znova obdelati posnetek.
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Poskusi znova
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <Trash2 className="w-4 h-4" />
+              Izbriši
+            </button>
           </div>
-          <button
-            onClick={handleRetry}
-            className="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Poskusi znova
-          </button>
         </div>
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Izbrišem posnetek?"
+          message="Ali želiš izbrisati posnetek? Tega ni mogoče razveljaviti."
+          confirmText="Izbriši"
+          cancelText="Prekliči"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false);
+            setIsDeleting(false);
+          }}
+        />
       </div>
     );
   }
@@ -279,6 +327,13 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
             >
               <Edit2 className="w-5 h-5" />
             </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              aria-label="Izbriši posnetek"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
           </>
         )}
       </div>
@@ -332,6 +387,20 @@ export default function RecordingDetail({ id }: RecordingDetailProps) {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Izbrišem posnetek?"
+        message="Ali želiš izbrisati posnetek? Tega ni mogoče razveljaviti."
+        confirmText="Izbriši"
+        cancelText="Prekliči"
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setIsDeleting(false);
+        }}
+      />
     </div>
   );
 }
