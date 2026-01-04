@@ -63,6 +63,12 @@ export async function generateSummary(transcript: string): Promise<string> {
           role: "user",
           content: `Povzemi transkript v slovenščini. Uporabi alineje za ključne točke in loči akcijske korake.
 
+Dodatna pravila:
+- Ne dodajaj informacij, ki niso v transkriptu.
+- Piši tekočo, naravno slovenščino.
+- Uporabi alineje.
+
+Transkript:
 ${transcript}`,
         },
       ],

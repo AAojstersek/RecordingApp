@@ -87,24 +87,76 @@ export async function POST(request: NextRequest) {
       contentType
     );
 
-    // Generate title and summary
+    // Extract header (first line or first sentence)
+    let header = "";
+    let clientCompany: string | null = null;
+    let clientPerson: string | null = null;
+    let transcriptBody = transcript;
+
+    try {
+      // Extract header: first non-empty line, or first sentence
+      const lines = transcript.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+      
+      if (lines.length > 0) {
+        // Use first line as header
+        header = lines[0];
+      } else {
+        // Fallback: first sentence up to first punctuation
+        const firstSentenceMatch = transcript.match(/^[^.!?]+[.!?]/);
+        if (firstSentenceMatch) {
+          header = firstSentenceMatch[0].trim();
+        }
+      }
+
+      // Parse header: "COMPANY, PERSON"
+      if (header.includes(",")) {
+        const parts = header.split(",");
+        if (parts.length >= 2) {
+          clientCompany = parts[0].trim() || null;
+          clientPerson = parts.slice(1).join(",").trim() || null;
+        }
+      }
+
+      // Extract transcript body: remove header from transcript
+      if (header) {
+        // Remove first occurrence of header
+        const headerIndex = transcript.indexOf(header);
+        if (headerIndex !== -1) {
+          transcriptBody = transcript.substring(headerIndex + header.length).trim();
+        }
+      }
+    } catch (error) {
+      // If header extraction fails, use full transcript as body
+      console.error("Header extraction failed:", error);
+      transcriptBody = transcript;
+      clientCompany = null;
+      clientPerson = null;
+    }
+
+    // Generate title and summary using transcript_body only
     const [summary, title] = await Promise.all([
-      generateSummary(transcript),
-      generateTitle(transcript),
+      generateSummary(transcriptBody),
+      generateTitle(transcriptBody),
     ]);
 
     // Update DB
     const updates: {
       status: string;
       transcript: string;
+      transcript_body: string;
       summary: string;
       language: string;
+      client_company?: string | null;
+      client_person?: string | null;
       title?: string;
     } = {
       status: "completed",
-      transcript,
+      transcript, // Full original transcript
+      transcript_body: transcriptBody, // Meeting content without header
       summary,
       language: "sl",
+      client_company: clientCompany,
+      client_person: clientPerson,
     };
 
     // Only update title if current title is empty or "Posnetek"

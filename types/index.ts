@@ -10,5 +10,8 @@ export interface Recording {
   language: string;
   created_at: string;
   updated_at: string;
+  client_company?: string | null;
+  client_person?: string | null;
+  transcript_body?: string | null;
 }
 
